@@ -1,0 +1,76 @@
+Handle,Title,Body (HTML),Vendor,Type,Tags,Published,Option1 Name,Option1 Value,Option2 Name,Option2 Value,Variant SKU,Variant Grams,Variant Inventory Policy,Variant Fulfillment Service,Variant Price,Variant Requires Shipping,Variant Taxable,Gift Card,SEO Title,SEO Description,Variant Weight Unit,Status
+lumo-shell-led-over-jacket,LUMO SHELL Smart LED Visibility Over-Jacket,"<p><strong>Be seen from every angle. Brakes when you do.</strong></p>
+<p>LUMO SHELL is a fluoro yellow, water-resistant LED over-jacket made to wear over the riding jacket you already own. Continuous COB LED strips along the seams glow all night, and the back panel turns bright red automatically when you slow down.</p>
+<h3>How it works</h3>
+<ul>
+<li><strong>Ride normally:</strong> LEDs glow bright fluoro yellow, front, sides and rear.</li>
+<li><strong>Deceleration detected:</strong> a 6-axis motion sensor (IMU) senses deceleration of about 0.3 g or more.</li>
+<li><strong>Brake light on:</strong> the back panel turns bright red.</li>
+<li><strong>Back to normal:</strong> after 2 seconds with no deceleration, it returns to yellow.</li>
+</ul>
+<h3>Features</h3>
+<ul>
+<li>Eight LED zones trace your whole outline for 360° active visibility</li>
+<li>Designed to wear over any riding jacket: stretch panels, side expansion zippers, adjustable straps</li>
+<li>Ultra-light and breathable, approx. 0.9–1.1 kg</li>
+<li>High-visibility fluoro fabric with reflective details</li>
+<li>Water-resistant to IPX4 (rain and road spray), all LED channels sealed</li>
+<li>Detachable electronics so the jacket can be washed</li>
+<li>7.4 V 8000 mAh rechargeable battery, 8–10 hours continuous use, USB-C charging (5 V / 2 A)</li>
+</ul>
+<h3>Upgrades</h3>
+<ul>
+<li><strong>Colour-change LEDs:</strong> switch the LED colour away from the standard fluoro yellow.</li>
+<li><strong>Adjustable brightness:</strong> turn the LEDs up for dark roads or down for well-lit streets.</li>
+<li><strong>Extended battery:</strong> longer runtime than the standard 8–10 hour pack.</li>
+<li><strong>MAX:</strong> all three upgrades.</li>
+</ul>
+<h3>In the box</h3>
+<ul><li>LUMO SHELL over-jacket</li><li>Battery pack (7.4 V 8000 mAh)</li><li>USB-C charging cable</li><li>User manual</li></ul>
+<h3>Important safety information</h3>
+<ul>
+<li>LUMO SHELL is a visibility aid. It is not sold as impact or abrasion protection and does not replace a helmet or protective riding gear.</li>
+<li>The red panel responds to deceleration measured by a motion sensor, not your brake lever. It supplements, and does not replace, your motorcycle's brake light.</li>
+<li>Road rules about lights and colours differ between Australian states and territories. Check the rules where you ride.</li>
+<li>IPX4 covers splashing water. Do not submerge. Remove the battery pack and control module before washing.</li>
+</ul>
+<p><em>Product images are illustrative renders. Final product may differ in minor details.</em></p>",LUMO,Motorcycle Jackets,"motorcycle, LED jacket, hi-vis, night riding, brake light, over-jacket, rider safety",FALSE,Size,S,Model,Base (no upgrades),LUMO-BASE-S,1100,deny,manual,499.00,TRUE,TRUE,FALSE,LUMO SHELL LED Motorcycle Over-Jacket with Automatic Brake Light,"Fluoro LED over-jacket for riders. LEDs glow along the seams for night visibility and the back panel turns red when you slow down. IPX4, USB-C, from $499.",kg,draft
+lumo-shell-led-over-jacket,,,,,,,Size,M,Model,Base (no upgrades),LUMO-BASE-M,1100,deny,manual,499.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,L,Model,Base (no upgrades),LUMO-BASE-L,1100,deny,manual,499.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,XL,Model,Base (no upgrades),LUMO-BASE-XL,1100,deny,manual,499.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,2XL,Model,Base (no upgrades),LUMO-BASE-2XL,1100,deny,manual,499.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,S,Model,Colour-change LEDs,LUMO-COL-S,1100,deny,manual,799.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,M,Model,Colour-change LEDs,LUMO-COL-M,1100,deny,manual,799.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,L,Model,Colour-change LEDs,LUMO-COL-L,1100,deny,manual,799.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,XL,Model,Colour-change LEDs,LUMO-COL-XL,1100,deny,manual,799.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,2XL,Model,Colour-change LEDs,LUMO-COL-2XL,1100,deny,manual,799.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,S,Model,Adjustable brightness,LUMO-BRI-S,1100,deny,manual,649.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,M,Model,Adjustable brightness,LUMO-BRI-M,1100,deny,manual,649.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,L,Model,Adjustable brightness,LUMO-BRI-L,1100,deny,manual,649.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,XL,Model,Adjustable brightness,LUMO-BRI-XL,1100,deny,manual,649.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,2XL,Model,Adjustable brightness,LUMO-BRI-2XL,1100,deny,manual,649.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,S,Model,Extended battery,LUMO-BAT-S,1100,deny,manual,749.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,M,Model,Extended battery,LUMO-BAT-M,1100,deny,manual,749.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,L,Model,Extended battery,LUMO-BAT-L,1100,deny,manual,749.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,XL,Model,Extended battery,LUMO-BAT-XL,1100,deny,manual,749.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,2XL,Model,Extended battery,LUMO-BAT-2XL,1100,deny,manual,749.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,S,Model,Colour-change LEDs + Adjustable brightness,LUMO-COL-BRI-S,1100,deny,manual,949.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,M,Model,Colour-change LEDs + Adjustable brightness,LUMO-COL-BRI-M,1100,deny,manual,949.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,L,Model,Colour-change LEDs + Adjustable brightness,LUMO-COL-BRI-L,1100,deny,manual,949.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,XL,Model,Colour-change LEDs + Adjustable brightness,LUMO-COL-BRI-XL,1100,deny,manual,949.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,2XL,Model,Colour-change LEDs + Adjustable brightness,LUMO-COL-BRI-2XL,1100,deny,manual,949.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,S,Model,Colour-change LEDs + Extended battery,LUMO-COL-BAT-S,1100,deny,manual,1049.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,M,Model,Colour-change LEDs + Extended battery,LUMO-COL-BAT-M,1100,deny,manual,1049.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,L,Model,Colour-change LEDs + Extended battery,LUMO-COL-BAT-L,1100,deny,manual,1049.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,XL,Model,Colour-change LEDs + Extended battery,LUMO-COL-BAT-XL,1100,deny,manual,1049.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,2XL,Model,Colour-change LEDs + Extended battery,LUMO-COL-BAT-2XL,1100,deny,manual,1049.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,S,Model,Adjustable brightness + Extended battery,LUMO-BRI-BAT-S,1100,deny,manual,899.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,M,Model,Adjustable brightness + Extended battery,LUMO-BRI-BAT-M,1100,deny,manual,899.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,L,Model,Adjustable brightness + Extended battery,LUMO-BRI-BAT-L,1100,deny,manual,899.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,XL,Model,Adjustable brightness + Extended battery,LUMO-BRI-BAT-XL,1100,deny,manual,899.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,2XL,Model,Adjustable brightness + Extended battery,LUMO-BRI-BAT-2XL,1100,deny,manual,899.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,S,Model,MAX (all upgrades),LUMO-MAX-S,1100,deny,manual,1199.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,M,Model,MAX (all upgrades),LUMO-MAX-M,1100,deny,manual,1199.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,L,Model,MAX (all upgrades),LUMO-MAX-L,1100,deny,manual,1199.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,XL,Model,MAX (all upgrades),LUMO-MAX-XL,1100,deny,manual,1199.00,TRUE,TRUE,,,,kg,
+lumo-shell-led-over-jacket,,,,,,,Size,2XL,Model,MAX (all upgrades),LUMO-MAX-2XL,1100,deny,manual,1199.00,TRUE,TRUE,,,,kg,

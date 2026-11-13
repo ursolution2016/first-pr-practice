@@ -27,11 +27,11 @@ window.LUMO_CONFIG = {
   sizes: ['S', 'M', 'L', 'XL', '2XL'],   // ASSUMED size run — edit to match your product
 
   /* ---- Your business (used on the policies page & footer) ------------- */
-  businessName: '',      // e.g. 'Lumo Pty Ltd'
-  abn: '',               // 11-digit ABN
-  businessAddress: '',   // street address shown in the terms / warranty
-  contactEmail: '',      // customer service email
-  contactPhone: '',      // optional
+  businessName: 'NI Clains',      // e.g. 'Lumo Pty Ltd'
+  abn: '77 022 022 391',               // 11-digit ABN
+  businessAddress: '5 Lachlan St, Bossley Park NSW 2176',   // street address shown in the terms / warranty
+  contactEmail: 'ursolution2016@gmail.com',      // customer service email
+  contactPhone: '0404 435 069',      // optional
 
   /* ---- Fulfilment text (shown in FAQ / policies) ---------------------- */
   dispatchTime: '',      // e.g. 'within 5 business days'
