@@ -32,8 +32,8 @@ window.LUMO_CONFIG = {
   contactPhone: '0404 435 069',      // optional
 
   /* ---- Fulfilment text (shown in FAQ / policies) ---------------------- */
-  dispatchTime: '',      // e.g. 'within 5 business days'
-  shippingInfo: '',      // e.g. 'Flat-rate $15 Australia-wide via Australia Post'
+  dispatchTime: 'To be advised when we confirm your order',      // e.g. 'within 5 business days'
+  shippingInfo: '$20 flat-rate shipping.',      // e.g. 'Flat-rate $15 Australia-wide via Australia Post'
   warrantyPeriod: '12 months',    // e.g. '12 months'
   returnsWindow: '30 days',     // e.g. '30 days' (change-of-mind policy, if you offer one)
 

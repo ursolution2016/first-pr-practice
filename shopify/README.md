@@ -11,11 +11,11 @@
 3. Open the new draft product > **Media** > upload the images from `assets/img/`.
 4. Check the prices and sizes, set stock quantities, then change **Status** to Active.
 5. Settings > **Taxes and duties** > tick "Include sales tax in product price" so $499 is the GST-inclusive price.
-6. Settings > **Payments** > turn on Shopify Payments. Settings > **Shipping and delivery** > set your rates.
+6. Settings > **Payments** > turn on Shopify Payments. Settings > **Shipping and delivery** > add a $20 flat rate.
 7. Settings > **Policies** > paste the sections from `../policies.html` (returns, privacy, terms, shipping).
 
 ## Pricing
 Base $499, any 1 upgrade $749, any 2 upgrades $999, all 3 (MAX) $1,199.
 
 ## Assumptions to confirm
-- Sizes S to 2XL. Shipping weight 1.1 kg per jacket.
+- Sizes S, M, L, XL, 2XL. Shipping weight 1.1 kg per jacket.

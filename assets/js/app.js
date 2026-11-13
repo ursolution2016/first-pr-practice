@@ -132,7 +132,7 @@
     $('#cartCount').classList.toggle('on', count() > 0);
     $('#cartSubtotal').textContent = money(subtotal());
     $('#checkoutBtn').disabled = cart.length === 0;
-    $('#cartNote').textContent = 'Delivery ' + (C.shippingInfo ? 'is: ' + C.shippingInfo : 'is confirmed when we process your order') + '.' + (C.pricesIncludeGST ? ' Prices include GST.' : '');
+    $('#cartNote').textContent = (C.shippingInfo ? 'Delivery: ' + C.shippingInfo : 'Delivery is confirmed when we process your order.') + (C.pricesIncludeGST ? ' Prices include GST.' : '');
     var body = $('#cartBody');
     if (!cart.length) { body.innerHTML = '<p class="empty">Your cart is empty.</p><a class="btn btn-ghost block" href="#models" data-close>Choose your LUMO SHELL</a>'; return; }
     body.innerHTML = cart.map(function (l, i) {
