@@ -7,27 +7,25 @@
 window.LUMO_CONFIG = {
 
   /* ---- Pricing ---------------------------------------------------------
-     Base ($499) and top-of-range ($1,199) are your stated prices.
-     The three upgrade prices below are ASSUMED so that Base + all three
-     upgrades = $1,199 exactly. Change them to your real figures; the MAX
-     price is calculated from the base + upgrades, so they must add up to
-     whatever you want MAX to cost.                                        */
+     Price depends on HOW MANY upgrades are chosen (any combination):
+       0 upgrades = $499, 1 = $749, 2 = $999, all 3 = $1,199 (MAX).         */
   currency: 'AUD',
   locale: 'en-AU',
   pricesIncludeGST: true,           // ACL: advertised price must be the total price
-  base: { name: 'LUMO SHELL', price: 499 },
+  base: { name: 'LUMO SHELL' },
+  priceByUpgradeCount: [499, 749, 999, 1199],
   upgrades: [
-    { id: 'colour',     name: 'Colour-change LEDs',  price: 300,
+    { id: 'colour',     name: 'Colour-change LEDs',
       desc: 'Switch the LED colour away from the standard fluoro yellow.' },
-    { id: 'brightness', name: 'Adjustable brightness', price: 150,
+    { id: 'brightness', name: 'Brightness control',
       desc: 'Turn the LEDs up for dark roads or down for well-lit streets.' },
-    { id: 'battery',    name: 'Extended battery',    price: 250,
+    { id: 'battery',    name: 'Extended battery',
       desc: 'A larger battery pack for longer runtime than the standard 8–10 hours.' }
   ],
-  sizes: ['S', 'M', 'L', 'XL', '2XL'],   // ASSUMED size run — edit to match your product
+  sizes: ['S', 'M', 'L', 'XL', '2XL'],   // ASSUMED size run: edit to match your product
 
   /* ---- Your business (used on the policies page & footer) ------------- */
-  businessName: 'NI Clains',      // e.g. 'Lumo Pty Ltd'
+  businessName: 'NI Claims',      // e.g. 'Lumo Pty Ltd'
   abn: '77 022 022 391',               // 11-digit ABN
   businessAddress: '5 Lachlan St, Bossley Park NSW 2176',   // street address shown in the terms / warranty
   contactEmail: 'ursolution2016@gmail.com',      // customer service email
@@ -36,8 +34,8 @@ window.LUMO_CONFIG = {
   /* ---- Fulfilment text (shown in FAQ / policies) ---------------------- */
   dispatchTime: '',      // e.g. 'within 5 business days'
   shippingInfo: '',      // e.g. 'Flat-rate $15 Australia-wide via Australia Post'
-  warrantyPeriod: '',    // e.g. '12 months'
-  returnsWindow: '',     // e.g. '30 days' (change-of-mind policy, if you offer one)
+  warrantyPeriod: '12 months',    // e.g. '12 months'
+  returnsWindow: '30 days',     // e.g. '30 days' (change-of-mind policy, if you offer one)
 
   /* ---- Checkout --------------------------------------------------------
      The site ships as a static front end, so it cannot take card payments

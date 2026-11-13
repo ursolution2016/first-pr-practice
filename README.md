@@ -8,9 +8,8 @@ Netlify, Vercel, Cloudflare Pages or GitHub Pages.
 1. **Edit `assets/js/config.js`.** Business name, ABN, address, email, dispatch/shipping text,
    warranty period and returns window. Anything blank shows as a highlighted `[add … in config.js]`
    field on the site and policies page so nothing is silently invented.
-2. **Confirm pricing.** Base ($499) and top-of-range ($1,199) are as briefed. The upgrade prices
-   (colour change $300, brightness $150, extended battery $250) and size run (S–2XL) are
-   **assumptions**; change them in `config.js`. MAX = base + all upgrades.
+2. **Confirm pricing.** Base ($499) and top-of-range ($1,199) are as briefed. Any 1 upgrade is $749, any 2 are $999,
+   all 3 (MAX) are $1,199; set in `config.js`. The size run (S–2XL) is an **assumption**.
 3. **Connect checkout.** The site cannot take card payments by itself. Orders are *requests*:
    set `orderEndpoint` (Formspree/Netlify Forms/your API, receives JSON) or `contactEmail`
    (opens a pre-filled email). To take payments online, use Shopify (Buy Button / full store)

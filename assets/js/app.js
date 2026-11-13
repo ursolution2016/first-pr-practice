@@ -8,8 +8,8 @@
   /* ---------- helpers ---------- */
   var fmt = new Intl.NumberFormat(C.locale, { style: 'currency', currency: C.currency, maximumFractionDigits: 0 });
   var money = function (n) { return fmt.format(n); };
-  var upgradeTotal = C.upgrades.reduce(function (s, u) { return s + u.price; }, 0);
-  var PRICE = { base: C.base.price, max: C.base.price + upgradeTotal };
+  var TIERS = C.priceByUpgradeCount;
+  var PRICE = { base: TIERS[0], max: TIERS[TIERS.length - 1] };
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
 
   function store(get, key, val) {
@@ -76,13 +76,14 @@
   upList.innerHTML = C.upgrades.map(function (u) {
     return '<label class="up"><input type="checkbox" value="' + esc(u.id) + '">' +
       '<span class="up-body"><strong>' + esc(u.name) + '</strong><small>' + esc(u.desc) + '</small></span>' +
-      '<span class="up-price">+' + money(u.price) + '</span></label>';
+      '</label>';
   }).join('');
   sizeSel.innerHTML = C.sizes.map(function (s) { return '<option' + (s === state.size ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('');
   if (C.sizes.indexOf(state.size) < 0) state.size = C.sizes[0];
 
+  $('#ladder').textContent = 'Base ' + money(TIERS[0]) + ' · any 1 upgrade ' + money(TIERS[1]) + ' · any 2 upgrades ' + money(TIERS[2]) + ' · all 3 (MAX) ' + money(TIERS[3]);
   function chosen() { return C.upgrades.filter(function (u) { return state.ups[u.id]; }); }
-  function unit() { return C.base.price + chosen().reduce(function (s, u) { return s + u.price; }, 0); }
+  function unit() { return TIERS[chosen().length]; }
   function modelName() {
     var n = chosen().length;
     return n === C.upgrades.length ? C.base.name + ' MAX' : C.base.name;

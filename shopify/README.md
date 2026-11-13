@@ -14,6 +14,8 @@
 6. Settings > **Payments** > turn on Shopify Payments. Settings > **Shipping and delivery** > set your rates.
 7. Settings > **Policies** > paste the sections from `../policies.html` (returns, privacy, terms, shipping).
 
+## Pricing
+Base $499, any 1 upgrade $749, any 2 upgrades $999, all 3 (MAX) $1,199.
+
 ## Assumptions to confirm
-- Upgrade prices: colour change +$300, brightness +$150, extended battery +$250 (MAX = $1,199).
 - Sizes S to 2XL. Shipping weight 1.1 kg per jacket.
