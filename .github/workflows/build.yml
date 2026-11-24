@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+    branches: ["ccr-f8afe636-i5mzbk"]  # remove once this workflow is on the default branch
 jobs:
   build:
     strategy:

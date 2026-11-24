@@ -2,6 +2,7 @@
 import io
 import re
 import shutil
+import sys
 from decimal import Decimal
 
 import pytest
@@ -62,6 +63,7 @@ def test_library_rejects_duplicates_blank_labels_and_bad_types(lib, files):
         lib.add(bad, "C")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
 def test_library_is_private(lib, files):
     lib.add(files / "original.pdf", "A")
     assert (lib.root.stat().st_mode & 0o777) == 0o700
