@@ -37,6 +37,8 @@ class ParsedStatement:
     total_debits: Optional[Decimal] = None
     total_credits: Optional[Decimal] = None
     unparsed_lines: list = field(default_factory=list)  # (line_no, text)
+    ocr_suggestions: list = field(default_factory=list)  # single-character OCR fixes (unconfirmed)
+    break_lines: list = field(default_factory=list)  # rows whose balance does not reconcile
 
 
 @dataclass

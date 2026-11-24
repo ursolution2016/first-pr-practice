@@ -1,16 +1,22 @@
 """Command line.
 
     python -m stmtcheck statement.pdf [--json] [--profile bank.json] [--no-ocr]
+            [--against auto|ID] [--export-dir DIR [--accept-ocr-fix ID ...]]
+    python -m stmtcheck library add original.pdf --label "Acme Bank Mar 2025" [--issuer X] [--notes N]
+    python -m stmtcheck library list | remove ID
     python -m stmtcheck learn genuine1.pdf genuine2.pdf --name "My Bank" -o bank.json
     python -m stmtcheck serve [--host 127.0.0.1] [--port 8000]
+
+The reference library lives in ~/.stmtcheck (override with --library DIR or STMTCHECK_HOME).
 """
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+from pathlib import Path
 
-from .analyze import analyze
+from .analyze import analyze, public_view
 from .models import Severity
 
 DISCLAIMER = (
@@ -21,7 +27,11 @@ DISCLAIMER = (
 
 def render_text(result: dict) -> str:
     out = [f"File: {result['file']}", f"Rows checked: {result['rows_checked']}",
-           f"Verdict: {result['verdict']}", ""]
+           f"Verdict: {result['verdict']}"]
+    if result.get("reference"):
+        out.append(f"Compared with: {result['reference']['label']} "
+                   f"(id {result['reference']['id']})")
+    out.append("")
     if not result["findings"]:
         out.append("No findings.")
     for f in result["findings"]:
@@ -30,8 +40,17 @@ def render_text(result: dict) -> str:
             out.append(f"    where:    {f.location}")
         if f.evidence:
             out.append(f"    evidence: {f.evidence}")
+    sugg = result.get("ocr_suggestions") or []
+    if sugg:
+        out += ["", "Possible OCR misreads (confirm by eye, then pass --accept-ocr-fix ID):"]
+        out += [f"    {s['id']}: {s['submitted']} -> {s['suggested']}" for s in sugg]
     out += ["", DISCLAIMER]
     return "\n".join(out)
+
+
+def _library(root):
+    from .library import Library
+    return Library(root)
 
 
 def _check(argv) -> int:
@@ -42,20 +61,71 @@ def _check(argv) -> int:
     p.add_argument("--profile", help="bank profile JSON created with 'stmtcheck learn'")
     p.add_argument("--no-ocr", action="store_true", help="skip OCR of scanned documents")
     p.add_argument("--ela-dir", help="write error-level-analysis heatmaps of scanned pages here")
+    p.add_argument("--against", help="compare with a stored original: 'auto' or a library id")
+    p.add_argument("--library", help="library directory (default ~/.stmtcheck)")
+    p.add_argument("--export-dir", help="write corrected data (CSV) and a reconciliation report (PDF)")
+    p.add_argument("--accept-ocr-fix", action="append", default=[], metavar="ID",
+                   help="apply a suggested OCR correction you have confirmed by eye (repeatable)")
     args = p.parse_args(argv)
     try:
-        result = analyze(args.file, profile=args.profile, ocr=not args.no_ocr, ela_dir=args.ela_dir)
+        lib = _library(args.library) if args.against else None
+        result = analyze(args.file, profile=args.profile, ocr=not args.no_ocr, ela_dir=args.ela_dir,
+                         library=lib, against=args.against)
     except (ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 3
     if args.json:
-        payload = dict(result, top_severity=result["top_severity"].name,
-                       findings=[f.to_dict() for f in result["findings"]], disclaimer=DISCLAIMER)
-        print(json.dumps(payload, indent=2))
+        print(json.dumps(dict(public_view(result), disclaimer=DISCLAIMER), indent=2))
     else:
         print(render_text(result))
+    if args.export_dir:
+        from .report import build_export, to_csv, to_pdf
+        out = Path(args.export_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        export = build_export(result, args.accept_ocr_fix)
+        stem = Path(args.file).stem
+        (out / f"{stem}-corrected.csv").write_bytes(to_csv(result, export))
+        (out / f"{stem}-reconciliation.pdf").write_bytes(to_pdf(result, export))
+        print(f"\nWrote {stem}-corrected.csv and {stem}-reconciliation.pdf to {out}", file=sys.stderr)
     top = result["top_severity"]
     return 2 if top >= Severity.HIGH else 1 if top >= Severity.MEDIUM else 0
+
+
+def _library_cmd(argv) -> int:
+    p = argparse.ArgumentParser(prog="stmtcheck library",
+                                description="Manage stored originals used for comparison.")
+    p.add_argument("--library", help="library directory (default ~/.stmtcheck)")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    a = sub.add_parser("add", help="store a known-genuine original")
+    a.add_argument("file")
+    a.add_argument("--label", required=True)
+    a.add_argument("--issuer", default="")
+    a.add_argument("--notes", default="")
+    sub.add_parser("list")
+    r = sub.add_parser("remove")
+    r.add_argument("id")
+    args = p.parse_args(argv)
+    lib = _library(args.library)
+    try:
+        if args.cmd == "add":
+            ref = lib.add(args.file, args.label, args.issuer, args.notes)
+            print(f"Stored {ref['label']!r} as {ref['id']} ({ref['rows']} rows)")
+            if ref["self_check"] in ("HIGH", "MEDIUM"):
+                print(f"warning: this original itself scores {ref['self_check']} on the checks. "
+                      "Make sure it is genuine (or an OCR misread) before relying on it.",
+                      file=sys.stderr)
+        elif args.cmd == "list":
+            for r in lib.list():
+                print(f"{r['id']}  {r['added_at']}  {r['rows']:>3} rows  {r['label']}"
+                      + (f"  [{r['issuer']}]" if r["issuer"] else ""))
+        else:
+            ok = lib.remove(args.id)
+            print("Removed." if ok else "No such id.")
+            return 0 if ok else 1
+    except (ValueError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
+    return 0
 
 
 def _learn(argv) -> int:
@@ -80,8 +150,9 @@ def _serve(argv) -> int:
     p = argparse.ArgumentParser(prog="stmtcheck serve", description="Run the local web UI.")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--library", help="library directory (default ~/.stmtcheck)")
     args = p.parse_args(argv)
-    serve(args.host, args.port)
+    serve(args.host, args.port, args.library)
     return 0
 
 
@@ -91,6 +162,8 @@ def main(argv=None) -> int:
         return _learn(argv[1:])
     if argv and argv[0] == "serve":
         return _serve(argv[1:])
+    if argv and argv[0] == "library":
+        return _library_cmd(argv[1:])
     return _check(argv)
 
 

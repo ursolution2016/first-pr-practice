@@ -35,8 +35,9 @@ def _val(token: str):
         return None
 
 
-def _ocr_explains(prev_text: str, amount_text: str, balance_text: str) -> bool:
-    """True if swapping one lookalike character in any one figure reconciles the row."""
+def _ocr_explains(prev_text: str, amount_text: str, balance_text: str):
+    """(figure index, variant) if swapping one lookalike character in one figure reconciles
+    the row (0 = previous balance, 1 = amount, 2 = balance); otherwise None."""
     for which in range(3):
         texts = [prev_text, amount_text, balance_text]
         for variant in _variants(texts[which]):
@@ -45,8 +46,8 @@ def _ocr_explains(prev_text: str, amount_text: str, balance_text: str) -> bool:
             if None in (p, a, b):
                 continue
             if b - p in (abs(a), -abs(a)):
-                return True
-    return False
+                return which, variant
+    return None
 
 
 def check_arithmetic(st: ParsedStatement, ocr: bool = False) -> list:
@@ -95,8 +96,21 @@ def check_arithmetic(st: ParsedStatement, ocr: bool = False) -> list:
                 if last_break_row == i - 1:
                     note = (" Consecutive breaks usually mean a balance figure on the previous "
                             "row was changed, not the amount on this one.")
+                st.break_lines.append(t.line_no)
                 if ocr:
-                    if _ocr_explains(prev_text, t.amount_text, t.balance_text):
+                    fix = _ocr_explains(prev_text, t.amount_text, t.balance_text)
+                    if fix:
+                        which, variant = fix
+                        if which == 0:
+                            target = txns[i - 1].line_no if i else 0  # 0 = opening balance
+                            field_, shown = ("balance" if i else "opening"), prev_text
+                        else:
+                            target = t.line_no
+                            field_, shown = (("amount", t.amount_text) if which == 1
+                                             else ("balance", t.balance_text))
+                        st.ocr_suggestions.append({
+                            "id": f"{target}:{field_}", "line_no": target, "field": field_,
+                            "submitted": shown, "suggested": variant})
                         sev = Severity.MEDIUM
                         note += (" A single-character OCR confusion would reconcile this row, so "
                                  "it may be a misread rather than an edit.")

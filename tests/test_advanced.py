@@ -168,11 +168,16 @@ def test_bad_profile_version_rejected():
 
 # ---------- web ----------
 @pytest.fixture()
-def client():
-    return create_app().test_client()
+def client(tmp_path):
+    app = create_app(library_root=tmp_path / "lib")
+    c = app.test_client()
+    c.csrf = app.csrf_token
+    return c
 
 
 def _post(client, url, name, data, **extra):
+    if not url.startswith("/api/"):
+        extra.setdefault("csrf", client.csrf)
     return client.post(url, data={"file": (io.BytesIO(data), name), **extra},
                        content_type="multipart/form-data")
 
