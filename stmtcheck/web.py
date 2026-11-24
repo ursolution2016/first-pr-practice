@@ -4,12 +4,15 @@ Check uploads are written to a private temporary directory, analysed and deleted
 The Reference library (originals you add on purpose) is stored under ~/.stmtcheck, owner-only.
 Analysis results are kept in memory for 20 minutes so the export buttons work, then dropped.
 
-Binds to 127.0.0.1 by default. Put authentication and TLS in front of it before exposing it to
-anyone else: statements are sensitive. Forms carry a per-process CSRF token.
+Binds to 127.0.0.1 by default. For a phone on the same Wi-Fi use `serve --lan`, which requires an
+access code (login page + HttpOnly cookie, failed attempts rate-limited). The LAN mode is plain HTTP, so
+use trusted networks only, and put TLS in front of it for anything beyond that: statements are sensitive.
+Forms carry a per-process CSRF token. The page is responsive and installable (web manifest + icons).
 """
 from __future__ import annotations
 
 import hmac
+import io
 import json
 import secrets
 import tempfile
@@ -17,7 +20,7 @@ import time
 from html import escape
 from pathlib import Path
 
-from flask import Flask, Response, abort, jsonify, request
+from flask import Flask, Response, abort, jsonify, make_response, redirect, request
 
 from .analyze import SUPPORTED, analyze, public_view
 from .cli import DISCLAIMER
@@ -49,6 +52,9 @@ button.sec{background:var(--card);color:var(--fg);border:1px solid var(--line)}b
 .err{color:var(--hi)}.ok{color:var(--ok)}small,.muted{color:var(--muted)}
 table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}
 .scroll{overflow-x:auto}.row{display:flex;gap:8px;flex-wrap:wrap}.row form{margin:0}
+@media (max-width:600px){main{padding:14px 12px 48px}nav a{padding:10px 12px}h1{font-size:1.3rem}
+button,.btn{width:100%;padding:14px 18px}.row{flex-direction:column}.row form,.row button{width:100%}
+th,td{padding:6px 4px;font-size:.85rem}input[type=text],select,textarea{font-size:16px}}
 """
 
 NAV = [("/", "Check statement"), ("/library", "Reference library"), ("/about", "About")]
@@ -57,7 +63,9 @@ NAV = [("/", "Check statement"), ("/library", "Reference library"), ("/about", "
 def _layout(active: str, title: str, body: str) -> str:
     links = "".join(f'<a href="{h}"{" class=on" if h == active else ""}>{escape(t)}</a>' for h, t in NAV)
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
-            f'<meta name="viewport" content="width=device-width, initial-scale=1">'
+            f'<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+            f'<meta name="theme-color" content="#1f4e79"><link rel="manifest" href="/manifest.webmanifest">'
+            f'<link rel="icon" href="/icon-192.png"><link rel="apple-touch-icon" href="/icon-192.png">'
             f'<title>{escape(title)} - Statement Check</title><style>{CSS}</style></head><body>'
             f'<nav><span class="brand">Statement Check</span>{links}</nav>'
             f'<main>{body}<p><small>{escape(DISCLAIMER)}</small></p></main></body></html>')
@@ -85,20 +93,38 @@ def _diff_table(comp) -> str:
             f'<th>Original</th></tr>{rows}</table></div>')
 
 
-def create_app(library_root=None) -> Flask:
+def create_app(library_root=None, access_code=None) -> Flask:
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
     lib = Library(library_root)
     csrf = secrets.token_hex(16)
     app.csrf_token = csrf
     store: dict = {}
+    secret = secrets.token_bytes(32)
+    session_cookie = hmac.new(secret, b"stmtcheck-session", "sha256").hexdigest()
+    fails: dict = {}  # ip -> (count, locked_until)
+    PUBLIC = {"/login", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"}
+
+    def authed() -> bool:
+        if not access_code:
+            return True
+        if hmac.compare_digest(request.cookies.get("sc_auth", ""), session_cookie):
+            return True
+        return hmac.compare_digest(request.headers.get("X-Access-Code", ""), access_code)
+
+    @app.before_request
+    def require_login():
+        if access_code and request.path not in PUBLIC and not authed():
+            if request.path.startswith("/api/"):
+                return jsonify(error="Access code required (X-Access-Code header)."), 401
+            return redirect("/login")
 
     def hidden() -> str:
         return f'<input type="hidden" name="csrf" value="{csrf}">'
 
     @app.before_request
     def guard():
-        if request.method == "POST" and request.path != "/api/analyze":
+        if request.method == "POST" and request.path not in ("/api/analyze", "/login"):
             if not hmac.compare_digest(request.form.get("csrf", ""), csrf):
                 abort(403)
 
@@ -300,6 +326,73 @@ def create_app(library_root=None) -> Flask:
         ok = lib.remove(rid) if lib.get(rid) else False
         return library_page('<p class="ok">Removed.</p>' if ok else '<p class="err">No such original.</p>')
 
+    # ------------------------------------------------------- Login / mobile
+    def login_page(msg=""):
+        body = (f'<main><h1>Statement Check</h1><p class="sub">Enter the access code shown where the app '
+                f'was started.</p>{msg}<form class="card" method="post" action="/login">'
+                '<label for="code">Access code</label>'
+                '<input id="code" name="code" type="text" autocomplete="off" autocapitalize="off" '
+                'autocorrect="off" spellcheck="false" required autofocus>'
+                '<button type="submit">Unlock</button></form></main>')
+        return _layout("/login", "Sign in", body).replace("<nav>", '<nav style="display:none">')
+
+    @app.get("/login")
+    def login_view():
+        return login_page() if access_code else redirect("/")
+
+    @app.post("/login")
+    def login_submit():
+        if not access_code:
+            return redirect("/")
+        ip, now = request.remote_addr or "?", time.time()
+        count, until = fails.get(ip, (0, 0))
+        if until > now:
+            return login_page(f'<p class="err">Too many attempts. Try again in {int(until - now) + 1}s.</p>'), 429
+        if hmac.compare_digest(request.form.get("code", "").strip(), access_code):
+            fails.pop(ip, None)
+            resp = make_response(redirect("/"))
+            resp.set_cookie("sc_auth", session_cookie, httponly=True, samesite="Strict",
+                            max_age=12 * 3600)
+            return resp
+        count += 1
+        fails[ip] = (count, now + 60 if count >= 5 else 0)
+        if count >= 5:
+            fails[ip] = (0, now + 60)
+        return login_page('<p class="err">Wrong access code.</p>'), 401
+
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        return Response(json.dumps({
+            "name": "Statement Check", "short_name": "StmtCheck", "start_url": "/", "scope": "/",
+            "display": "standalone", "background_color": "#f7f7f5", "theme_color": "#1f4e79",
+            "icons": [{"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
+                      {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png"}]}),
+            mimetype="application/manifest+json")
+
+    def icon(size: int) -> bytes:
+        from PIL import Image, ImageDraw
+        img = Image.new("RGB", (size, size), "#1f4e79")
+        d = ImageDraw.Draw(img)
+        m = size * 0.22
+        d.rounded_rectangle((m, m * 0.8, size - m, size - m * 0.8), radius=size * 0.06, fill="#ffffff")
+        for i in range(4):  # statement lines
+            y = size * (0.34 + 0.11 * i)
+            d.rectangle((size * 0.32, y, size * (0.68 if i % 2 == 0 else 0.58), y + size * 0.035),
+                        fill="#1f4e79")
+        c = (size * 0.66, size * 0.70)  # check mark
+        d.line([(c[0] - size * 0.09, c[1]), (c[0] - size * 0.03, c[1] + size * 0.06),
+                (c[0] + size * 0.09, c[1] - size * 0.08)], fill="#2d6a4f", width=max(2, size // 22))
+        out = io.BytesIO()
+        img.save(out, "PNG")
+        return out.getvalue()
+
+    @app.get("/icon-<int:size>.png")
+    def icon_view(size):
+        if size not in (192, 512):
+            abort(404)
+        return Response(icon(size), mimetype="image/png",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
     # ------------------------------------------------------------------ About
     @app.get("/about")
     def about():
@@ -334,5 +427,7 @@ def create_app(library_root=None) -> Flask:
     return app
 
 
-def serve(host: str = "127.0.0.1", port: int = 8000, library_root=None) -> None:
-    create_app(library_root).run(host=host, port=port, debug=False)
+def serve(host: str = "127.0.0.1", port: int = 8000, library_root=None, access_code=None) -> None:
+    if host not in ("127.0.0.1", "localhost", "::1") and not access_code:
+        raise ValueError("an access code is required when listening beyond this computer")
+    create_app(library_root, access_code).run(host=host, port=port, debug=False, threaded=True)

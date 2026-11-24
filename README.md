@@ -99,6 +99,21 @@ python build_exe.py            # -> dist/stmtcheck  (dist/stmtcheck.exe on Windo
   report that OCR is unavailable.
 - The binary is unsigned, so Windows SmartScreen and macOS Gatekeeper will warn on first run.
 
+### Phone / tablet
+The web app is responsive (checked at iPhone width: no sideways scrolling, full-width buttons) and
+installable to the home screen (web manifest + icons). To use it from a phone, run the app on a computer
+and start it for your network:
+```
+stmtcheck serve --lan            # prints http://<computer-ip>:8000 and a one-off access code
+```
+Open that address on the phone (same Wi-Fi), enter the code, then choose a photo or PDF; the phone's camera
+is offered for image uploads. Everything is behind the access code (HttpOnly, SameSite=Strict cookie; five
+wrong attempts lock that address out for 60 s; API callers send `X-Access-Code`). `--lan` is **plain HTTP**:
+use it on a network you trust. For anything beyond that, put it behind an HTTPS reverse proxy or VPN. The
+server refuses to listen beyond this computer without a code.
+There is **no native iOS/Android app**: those need Xcode / the Android SDK, and the analysis engine
+(Python, Tesseract) runs on the computer, not the phone.
+
 ### Limits (read these)
 - Findings are indicators, not proof. A clean result does not show a document is genuine. Someone who
   regenerates the whole document with consistent fonts and correct arithmetic can pass the arithmetic,

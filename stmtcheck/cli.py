@@ -6,6 +6,7 @@
     python -m stmtcheck library list | remove ID
     python -m stmtcheck learn genuine1.pdf genuine2.pdf --name "My Bank" -o bank.json
     python -m stmtcheck serve [--host 127.0.0.1] [--port 8000]
+    python -m stmtcheck serve --lan [--access-code CODE]   # reachable from a phone on your Wi-Fi
 
 The reference library lives in ~/.stmtcheck (override with --library DIR or STMTCHECK_HOME).
 """
@@ -151,8 +152,30 @@ def _serve(argv) -> int:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--library", help="library directory (default ~/.stmtcheck)")
+    p.add_argument("--lan", action="store_true",
+                   help="listen on the local network (for a phone) behind an access code")
+    p.add_argument("--access-code", help="code required to use the app (generated with --lan if omitted)")
     args = p.parse_args(argv)
-    serve(args.host, args.port, args.library)
+    host, code = args.host, args.access_code
+    if args.lan:
+        import secrets
+        import socket
+        host = "0.0.0.0"
+        code = code or "".join(secrets.choice("abcdefghjkmnpqrstuvwxyz23456789") for _ in range(8))
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            try:
+                s.connect(("10.255.255.255", 1))  # no packet is sent; picks the LAN interface
+                ip = s.getsockname()[0]
+            except OSError:
+                ip = "<this computer's IP>"
+        print(f"On your phone (same Wi-Fi) open  http://{ip}:{args.port}\n"
+              f"Access code: {code}\n"
+              "This is plain HTTP: use a trusted network only. Press Ctrl+C to stop.", flush=True)
+    try:
+        serve(host, args.port, args.library, code)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
     return 0
 
 
