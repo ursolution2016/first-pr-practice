@@ -154,7 +154,8 @@ def _serve(argv) -> int:
     p.add_argument("--library", help="library directory (default ~/.stmtcheck)")
     p.add_argument("--lan", action="store_true",
                    help="listen on the local network (for a phone) behind an access code")
-    p.add_argument("--access-code", help="code required to use the app (generated with --lan if omitted)")
+    p.add_argument("--access-code", help="code required to use the app (generated with --lan if omitted; "
+                   "or set STMTCHECK_ACCESS_CODE)")
     args = p.parse_args(argv)
     host, code = args.host, args.access_code
     if args.lan:

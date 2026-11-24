@@ -14,6 +14,7 @@ from __future__ import annotations
 import hmac
 import io
 import json
+import os
 import secrets
 import tempfile
 import time
@@ -93,9 +94,30 @@ def _diff_table(comp) -> str:
             f'<th>Original</th></tr>{rows}</table></div>')
 
 
+def render_icon(size: int) -> bytes:
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (size, size), "#1f4e79")
+    d = ImageDraw.Draw(img)
+    m = size * 0.22
+    d.rounded_rectangle((m, m * 0.8, size - m, size - m * 0.8), radius=size * 0.06, fill="#ffffff")
+    for i in range(4):  # statement lines
+        y = size * (0.34 + 0.11 * i)
+        d.rectangle((size * 0.32, y, size * (0.68 if i % 2 == 0 else 0.58), y + size * 0.035),
+                    fill="#1f4e79")
+    c = (size * 0.66, size * 0.70)  # check mark
+    d.line([(c[0] - size * 0.09, c[1]), (c[0] - size * 0.03, c[1] + size * 0.06),
+            (c[0] + size * 0.09, c[1] - size * 0.08)], fill="#2d6a4f", width=max(2, size // 22))
+    out = io.BytesIO()
+    img.save(out, "PNG")
+    return out.getvalue()
+
+
 def create_app(library_root=None, access_code=None) -> Flask:
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
+    if os.environ.get("STMTCHECK_TRUST_PROXY"):  # behind one reverse proxy that terminates TLS
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     lib = Library(library_root)
     csrf = secrets.token_hex(16)
     app.csrf_token = csrf
@@ -202,7 +224,7 @@ def create_app(library_root=None, access_code=None) -> Flask:
 
         # Corrections: only against a verified source.
         body += (f'<section class="card"><h2>Correct and export</h2>'
-                 f'<form method="post" action="/export/{token}">{hidden()}')
+                 f'<form method="get" action="/export/{token}">')
         if comp and comp["same_statement"] and not comp["identical_file"] and comp["diffs"]:
             n = sum(1 for d in comp["diffs"] if d["kind"] == "changed")
             body += (f'<p>Every figure that differs will be <strong>restored to the value in your stored '
@@ -241,16 +263,17 @@ def create_app(library_root=None, access_code=None) -> Flask:
             return check_page(f'<p class="err">{escape(err)}</p>'), code
         return results_page(result, keep(result))
 
-    @app.post("/export/<token>")
-    def export(token):
+    @app.route("/export/<token>", methods=["GET", "POST"])
+    def export(token):  # GET so phone download managers work; the token is an unguessable capability
         entry = store.get(token)
         if not entry or time.time() - entry["t"] > RESULT_TTL:
             return _layout("/", "Expired", '<h1>Result expired</h1><p>Please run the check again.</p>'), 410
         result = entry["result"]
-        export_ = build_export(result, request.form.getlist("fix"))
+        src = request.values  # query string (GET) or form (POST)
+        export_ = build_export(result, src.getlist("fix"))
         stem = Path(result["file"]).stem[:60] or "statement"
         safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in stem)
-        if request.form.get("fmt") == "csv":
+        if src.get("fmt") == "csv":
             return Response(to_csv(result, export_), mimetype="text/csv",
                             headers={"Content-Disposition": f'attachment; filename="{safe}-corrected.csv"'})
         return Response(to_pdf(result, export_), mimetype="application/pdf",
@@ -352,7 +375,7 @@ def create_app(library_root=None, access_code=None) -> Flask:
             fails.pop(ip, None)
             resp = make_response(redirect("/"))
             resp.set_cookie("sc_auth", session_cookie, httponly=True, samesite="Strict",
-                            max_age=12 * 3600)
+                            secure=request.is_secure, max_age=12 * 3600)
             return resp
         count += 1
         fails[ip] = (count, now + 60 if count >= 5 else 0)
@@ -369,28 +392,11 @@ def create_app(library_root=None, access_code=None) -> Flask:
                       {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png"}]}),
             mimetype="application/manifest+json")
 
-    def icon(size: int) -> bytes:
-        from PIL import Image, ImageDraw
-        img = Image.new("RGB", (size, size), "#1f4e79")
-        d = ImageDraw.Draw(img)
-        m = size * 0.22
-        d.rounded_rectangle((m, m * 0.8, size - m, size - m * 0.8), radius=size * 0.06, fill="#ffffff")
-        for i in range(4):  # statement lines
-            y = size * (0.34 + 0.11 * i)
-            d.rectangle((size * 0.32, y, size * (0.68 if i % 2 == 0 else 0.58), y + size * 0.035),
-                        fill="#1f4e79")
-        c = (size * 0.66, size * 0.70)  # check mark
-        d.line([(c[0] - size * 0.09, c[1]), (c[0] - size * 0.03, c[1] + size * 0.06),
-                (c[0] + size * 0.09, c[1] - size * 0.08)], fill="#2d6a4f", width=max(2, size // 22))
-        out = io.BytesIO()
-        img.save(out, "PNG")
-        return out.getvalue()
-
     @app.get("/icon-<int:size>.png")
     def icon_view(size):
         if size not in (192, 512):
             abort(404)
-        return Response(icon(size), mimetype="image/png",
+        return Response(render_icon(size), mimetype="image/png",
                         headers={"Cache-Control": "public, max-age=86400"})
 
     # ------------------------------------------------------------------ About
@@ -420,6 +426,15 @@ def create_app(library_root=None, access_code=None) -> Flask:
             return jsonify(error=err), code
         return jsonify(dict(public_view(result), file=result["file"], disclaimer=DISCLAIMER))
 
+    @app.after_request
+    def harden(resp):
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("Referrer-Policy", "no-referrer")
+        resp.headers.setdefault("X-Frame-Options", "DENY")
+        if not request.path.startswith("/icon-"):
+            resp.headers.setdefault("Cache-Control", "no-store")  # statements are sensitive
+        return resp
+
     @app.errorhandler(413)
     def too_big(_):
         return jsonify(error="File too large (limit 25 MB)."), 413
@@ -427,7 +442,30 @@ def create_app(library_root=None, access_code=None) -> Flask:
     return app
 
 
+def min_code_length() -> int:
+    return 12 if os.environ.get("STMTCHECK_TRUST_PROXY") else 8
+
+
 def serve(host: str = "127.0.0.1", port: int = 8000, library_root=None, access_code=None) -> None:
-    if host not in ("127.0.0.1", "localhost", "::1") and not access_code:
-        raise ValueError("an access code is required when listening beyond this computer")
-    create_app(library_root, access_code).run(host=host, port=port, debug=False, threaded=True)
+    access_code = access_code or os.environ.get("STMTCHECK_ACCESS_CODE") or None
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        if not access_code:
+            raise ValueError("an access code is required when listening beyond this computer")
+        if len(access_code) < min_code_length():
+            raise ValueError(f"the access code must be at least {min_code_length()} characters "
+                             "when listening beyond this computer")
+    app = create_app(library_root, access_code)
+    try:
+        from waitress import serve as waitress_serve
+    except ImportError:
+        app.run(host=host, port=port, debug=False, threaded=True)
+    else:
+        kwargs = {}
+        if os.environ.get("STMTCHECK_TRUST_PROXY"):
+            # Waitress drops X-Forwarded-* from peers it does not trust, which would make every user
+            # look like the proxy (shared rate limit, no Secure cookie). Trust exactly one hop. This
+            # is only safe because the app port is reachable solely by the proxy (see deploy/).
+            kwargs = dict(trusted_proxy="*", trusted_proxy_count=1,
+                          trusted_proxy_headers={"x-forwarded-for", "x-forwarded-proto", "x-forwarded-host"})
+        waitress_serve(app, host=host, port=port, threads=8,
+                       max_request_body_size=25 * 1024 * 1024, **kwargs)

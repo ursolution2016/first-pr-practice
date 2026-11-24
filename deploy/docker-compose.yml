@@ -1,0 +1,35 @@
+# Statement Check with automatic HTTPS.
+#   cp deploy/.env.example deploy/.env   # then edit DOMAIN and STMTCHECK_ACCESS_CODE
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    environment:
+      STMTCHECK_ACCESS_CODE: ${STMTCHECK_ACCESS_CODE:?set STMTCHECK_ACCESS_CODE in deploy/.env}
+    volumes:
+      - data:/data          # the reference library; back this volume up
+    expose:
+      - "8000"              # not published: only Caddy can reach it
+    read_only: true
+    tmpfs:
+      - /tmp                # uploads are written here briefly and deleted
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data    # certificates
+      - caddy_config:/config
+volumes:
+  data:
+  caddy_data:
+  caddy_config:
