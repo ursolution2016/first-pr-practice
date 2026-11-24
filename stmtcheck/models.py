@@ -24,6 +24,9 @@ class Transaction:
     amount: Decimal  # always positive as printed
     balance: Decimal  # signed running balance
     direction_hint: int = 0  # +1 credit, -1 debit, 0 unknown (from CR/DR/minus)
+    amount_text: str = ""
+    balance_text: str = ""
+    conf: Optional[float] = None  # OCR confidence (0-100) of the figures, when read by OCR
 
 
 @dataclass

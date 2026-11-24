@@ -93,5 +93,6 @@ def parse_statement(text: str, page_of_line: Optional[dict] = None) -> ParsedSta
             date=parse_date(m["date"]),
             description=rest[:amt_m.start()].strip(),
             amount=abs(amount), balance=balance, direction_hint=hint,
+            amount_text=amt_m[0].strip(), balance_text=bal_m[0].strip(),
         ))
     return out
