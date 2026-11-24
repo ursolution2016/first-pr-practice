@@ -13,12 +13,34 @@ from .pdfforensics import lines_to_text
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
 
 
+def _find_tesseract():
+    """Tesseract on PATH, or a copy shipped beside the app (tesseract/tesseract[.exe] with a
+    tessdata folder), which is how the portable build is meant to be used."""
+    import os
+    import sys
+    names = ("tesseract.exe", "tesseract") if os.name == "nt" else ("tesseract",)
+    bases = []
+    if getattr(sys, "frozen", False):
+        bases += [Path(sys.executable).parent, Path(getattr(sys, "_MEIPASS", "."))]
+    for base in bases:
+        for name in names:
+            cand = base / "tesseract" / name
+            if cand.is_file():
+                if (base / "tesseract" / "tessdata").is_dir():
+                    os.environ.setdefault("TESSDATA_PREFIX", str(base / "tesseract" / "tessdata"))
+                return str(cand)
+    return shutil.which("tesseract")
+
+
 def ocr_available() -> bool:
     try:
-        import pytesseract  # noqa: F401
+        import pytesseract
     except ImportError:
         return False
-    return shutil.which("tesseract") is not None
+    found = _find_tesseract()
+    if found:
+        pytesseract.pytesseract.tesseract_cmd = found
+    return found is not None
 
 
 def render_pdf_pages(path: Path, dpi: int = 300) -> list:

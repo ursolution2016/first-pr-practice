@@ -84,6 +84,21 @@ and are deleted immediately; nothing is stored or logged. The client filename is
 types are allow-listed and uploads capped at 25 MB. It binds to 127.0.0.1. Add authentication and TLS
 before exposing it to anyone else, because statements are sensitive.
 
+### Standalone executable
+```
+pip install -e '.[dev]' pyinstaller
+python build_exe.py            # -> dist/stmtcheck  (dist/stmtcheck.exe on Windows)
+```
+- **Double-click / run with no arguments:** starts the web app and opens it in your browser (closing the
+  window stops it). With arguments it is the same CLI: `stmtcheck statement.pdf`, `stmtcheck library ...`.
+- PyInstaller cannot cross-compile: build on Windows for a `.exe`, on macOS for a Mac binary, on Linux
+  for Linux. `.github/workflows/build.yml` builds all three (run it from the Actions tab or push a `v*` tag).
+- **OCR needs Tesseract, which is not inside the executable.** Install it (Windows installer, `brew install
+  tesseract`, `apt install tesseract-ocr`), or ship a portable copy in a `tesseract/` folder beside the
+  executable (containing `tesseract[.exe]` and `tessdata/`). Without it everything else works and scans
+  report that OCR is unavailable.
+- The binary is unsigned, so Windows SmartScreen and macOS Gatekeeper will warn on first run.
+
 ### Limits (read these)
 - Findings are indicators, not proof. A clean result does not show a document is genuine. Someone who
   regenerates the whole document with consistent fonts and correct arithmetic can pass the arithmetic,
