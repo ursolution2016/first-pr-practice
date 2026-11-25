@@ -13,7 +13,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import median
 
-import pdfplumber
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LTChar
 from pypdf import PdfReader
 
 from .models import Finding, ParsedStatement, Severity
@@ -110,16 +111,45 @@ def _group_words(chars):
     } for w in words]
 
 
+def _iter_chars(obj):
+    """All text characters under a pdfminer layout object (pages hold chars directly, or in figures)."""
+    if isinstance(obj, LTChar):
+        yield obj
+    elif hasattr(obj, "__iter__"):
+        for child in obj:
+            yield from _iter_chars(child)
+
+
+def _cluster_lines(chars, tol: float = 3.0):
+    """Group chars into visual lines (top to bottom) by vertical position, left to right within a line."""
+    lines: list = []
+    for ch in sorted(chars, key=lambda c: c["top"]):
+        if lines and abs(ch["top"] - lines[-1]["top"]) <= tol:
+            lines[-1]["chars"].append(ch)
+        else:
+            lines.append({"top": ch["top"], "chars": [ch]})
+    for ln in lines:
+        ln["chars"].sort(key=lambda c: c["x0"])
+    return lines
+
+
 def extract_lines(path: Path):
-    """Return (text, page_of_line, lines, page_sizes) from a PDF text layer."""
+    """Return (text, page_of_line, lines, page_sizes) from a PDF text layer.
+
+    Uses pdfminer.six directly (pure Python, so it also runs on Android).
+    """
     lines, sizes = [], []
-    with pdfplumber.open(str(path)) as pdf:
-        for pno, page in enumerate(pdf.pages, 1):
-            sizes.append((round(float(page.width)), round(float(page.height))))
-            for ln in page.extract_text_lines(return_chars=True):
-                if ln["text"].strip():
-                    lines.append({"page": pno, "text": ln["text"],
-                                  "words": _group_words(ln["chars"]), "source": "text"})
+    for pno, page in enumerate(extract_pages(str(path), laparams=None), 1):
+        sizes.append((round(float(page.width)), round(float(page.height))))
+        height = float(page.height)
+        chars = [{"text": c.get_text(), "x0": c.x0, "x1": c.x1, "top": height - c.y1,
+                  "bottom": height - c.y0, "fontname": c.fontname, "size": c.size}
+                 for c in _iter_chars(page) if c.get_text()]
+        for ln in _cluster_lines(chars):
+            words = _group_words(ln["chars"])
+            if words:
+                lines.append({"page": pno, "text": " ".join(w["text"] for w in words),
+                              "words": words, "source": "text"})
     return lines_to_text(lines) + (sizes,)
 
 

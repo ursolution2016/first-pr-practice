@@ -15,8 +15,7 @@ with tempfile.TemporaryDirectory() as work:
     PyInstaller.__main__.run([
         "stmtcheck_app.py", "--noconfirm", "--clean", "--onefile", "--name", "stmtcheck",
         "--distpath", "dist", "--workpath", work, "--specpath", work,
-        "--collect-all", "pypdfium2", "--collect-all", "pdfplumber",
-        "--collect-submodules", "pdfminer", "--collect-submodules", "pytesseract",
+        "--collect-all", "pypdfium2", "--collect-submodules", "pdfminer", "--collect-submodules", "pytesseract",
         "--hidden-import", "stmtcheck.web", "--hidden-import", "stmtcheck.library",
     ])
 print("Built dist/stmtcheck" + (".exe" if sys.platform == "win32" else ""))

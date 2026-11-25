@@ -198,8 +198,9 @@ def test_web_api_flags_tamper(client, tmp_path):
 
 def test_web_html_escapes_and_renders(client, tmp_path):
     build_pdf(tmp_path / "t.pdf", balance_override={2: Decimal("2000.00")})
-    r = _post(client, "/analyze", "x.pdf", (tmp_path / "t.pdf").read_bytes())
-    assert r.status_code == 200 and b"STRONG INDICATORS" in r.data and b"<script" not in r.data
+    r = _post(client, "/analyze", "<img src=x onerror=alert(1)>.pdf", (tmp_path / "t.pdf").read_bytes())
+    assert r.status_code == 200 and b"STRONG INDICATORS" in r.data
+    assert b"<img src=x" not in r.data and b"&lt;img src=x onerror=alert(1)&gt;.pdf" in r.data
 
 
 def test_web_rejects_bad_type_and_corrupt(client):

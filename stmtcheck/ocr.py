@@ -7,6 +7,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from . import androidbridge
 from .parser import MONEY_RE
 from .pdfforensics import lines_to_text
 
@@ -33,6 +34,8 @@ def _find_tesseract():
 
 
 def ocr_available() -> bool:
+    if androidbridge.available():
+        return True  # ML Kit, via the Android app
     try:
         import pytesseract
     except ImportError:
@@ -44,7 +47,12 @@ def ocr_available() -> bool:
 
 
 def render_pdf_pages(path: Path, dpi: int = 300) -> list:
-    import pypdfium2 as pdfium
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:  # Android: no pdfium wheel, use the platform PdfRenderer
+        if androidbridge.available():
+            return androidbridge.render_pdf(path, min(dpi, 200))
+        raise
     pdf = pdfium.PdfDocument(str(path))
     try:
         return [pdf[i].render(scale=dpi / 72).to_pil().convert("RGB") for i in range(len(pdf))]
@@ -95,8 +103,39 @@ def _reread_figure(img, word):
         word["conf"] = sum(c for _, c in toks) / len(toks)
 
 
+def words_to_lines(words: list, pno: int) -> list:
+    """Cluster loose OCR words into table rows by vertical position (engine-independent)."""
+    if not words:
+        return []
+    heights = sorted(w["bottom"] - w["top"] for w in words)
+    tol = max(3.0, 0.6 * heights[len(heights) // 2])
+    rows: list = []
+    for w in sorted(words, key=lambda w: (w["top"] + w["bottom"]) / 2):
+        cy = (w["top"] + w["bottom"]) / 2
+        if rows and abs(cy - rows[-1]["cy"]) <= tol:
+            row = rows[-1]
+            row["words"].append(w)
+            row["cy"] = sum((x["top"] + x["bottom"]) / 2 for x in row["words"]) / len(row["words"])
+        else:
+            rows.append({"cy": cy, "words": [w]})
+    lines = []
+    for row in rows:
+        ws = sorted(row["words"], key=lambda w: w["x0"])
+        for w in ws:
+            if any(ch.isdigit() for ch in w["text"]):
+                w["text"] = normalise_money_text(w["text"])
+        lines.append({"page": pno, "text": " ".join(w["text"] for w in ws), "words": ws,
+                      "source": "ocr", "_y": row["cy"]})
+    return lines
+
+
 def ocr_lines(images: list) -> list:
     """OCR page images into line records with word boxes and confidences."""
+    if androidbridge.available():
+        lines = []
+        for pno, img in enumerate(images, 1):
+            lines += words_to_lines(androidbridge.recognize(img), pno)
+        return lines
     import pytesseract
     from pytesseract import Output
 

@@ -52,6 +52,7 @@ button.sec{background:var(--card);color:var(--fg);border:1px solid var(--line)}b
 .ev{color:var(--muted);font-size:.9rem;word-break:break-word}.verdict{font-size:1.2rem;font-weight:700}
 .err{color:var(--hi)}.ok{color:var(--ok)}small,.muted{color:var(--muted)}
 table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;word-break:break-word}
+.busy{position:fixed;inset:0;background:rgba(0,0,0,.55);color:#fff;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;z-index:9;font-size:1.1rem}.busy.on{display:flex}
 .scroll{overflow-x:auto}.row{display:flex;gap:8px;flex-wrap:wrap}.row form{margin:0}
 @media (max-width:600px){main{padding:14px 12px 48px}nav a{padding:10px 12px}h1{font-size:1.3rem}
 button,.btn{width:100%;padding:14px 18px}.row{flex-direction:column}.row form,.row button{width:100%}
@@ -69,7 +70,13 @@ def _layout(active: str, title: str, body: str) -> str:
             f'<link rel="icon" href="/icon-192.png"><link rel="apple-touch-icon" href="/icon-192.png">'
             f'<title>{escape(title)} - Statement Check</title><style>{CSS}</style></head><body>'
             f'<nav><span class="brand">Statement Check</span>{links}</nav>'
-            f'<main>{body}<p><small>{escape(DISCLAIMER)}</small></p></main></body></html>')
+            f'<main>{body}<p><small>{escape(DISCLAIMER)}</small></p></main>'
+            '<div class="busy" id="busy">Analysing&hellip;<br>Scanned documents can take a minute.</div>'
+            '<script>document.addEventListener("submit",function(e){var f=e.target;'
+            'if(f.hasAttribute("data-busy")){document.getElementById("busy").className="busy on";'
+            'var b=f.querySelector("button[type=submit]");if(b){b.disabled=true;}}});'
+            'window.addEventListener("pageshow",function(){document.getElementById("busy").className="busy";});'
+            '</script></body></html>')
 
 
 def _findings_html(findings) -> str:
@@ -112,7 +119,7 @@ def render_icon(size: int) -> bytes:
     return out.getvalue()
 
 
-def create_app(library_root=None, access_code=None) -> Flask:
+def create_app(library_root=None, access_code=None, bootstrap_token=None) -> Flask:
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
     if os.environ.get("STMTCHECK_TRUST_PROXY"):  # behind one reverse proxy that terminates TLS
@@ -136,7 +143,8 @@ def create_app(library_root=None, access_code=None) -> Flask:
 
     @app.before_request
     def require_login():
-        if access_code and request.path not in PUBLIC and not authed():
+        if (access_code and request.path not in PUBLIC and not request.path.startswith("/_bootstrap/")
+                and not authed()):
             if request.path.startswith("/api/"):
                 return jsonify(error="Access code required (X-Access-Code header)."), 401
             return redirect("/login")
@@ -184,6 +192,17 @@ def create_app(library_root=None, access_code=None) -> Flask:
         result["file"] = Path(upload.filename).name
         return result, None, 200
 
+    def analyze_path(path: Path, shown_name: str, against: str):
+        try:
+            result = analyze(path, library=lib, against=against if against != "none" else None)
+        except ValueError as exc:
+            return None, str(exc), 400
+        except Exception as exc:
+            app.logger.warning("analysis failed: %s", type(exc).__name__)
+            return None, "That file could not be analysed. It may be corrupt or unsupported.", 422
+        result["file"] = shown_name
+        return result, None, 200
+
     # ------------------------------------------------------------------ Check
     def check_page(msg=""):
         opts = ['<option value="auto">Find the best match in my library automatically</option>',
@@ -191,7 +210,7 @@ def create_app(library_root=None, access_code=None) -> Flask:
         opts += [f'<option value="{r["id"]}">{escape(r["label"])}</option>' for r in lib.list()]
         body = (f'<h1>Check a statement</h1><p class="sub">Screen a statement for signs of alteration. '
                 f'The upload is analysed and deleted immediately.</p>{msg}'
-                f'<form class="card" method="post" action="/analyze" enctype="multipart/form-data">{hidden()}'
+                f'<form class="card" data-busy method="post" action="/analyze" enctype="multipart/form-data">{hidden()}'
                 '<label for="file">Statement (PDF, image or .txt)</label>'
                 '<input id="file" name="file" type="file" required '
                 'accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,.txt">'
@@ -263,6 +282,25 @@ def create_app(library_root=None, access_code=None) -> Flask:
             return check_page(f'<p class="err">{escape(err)}</p>'), code
         return results_page(result, keep(result))
 
+    @app.get("/open-shared")
+    def open_shared():
+        """Analyse a file the Android app copied into its private inbox (Open with / Share to the app)."""
+        inbox = os.environ.get("STMTCHECK_INBOX")
+        name = request.args.get("name", "")
+        if not inbox or not name or Path(name).name != name:
+            abort(404)
+        path = Path(inbox) / name
+        if not path.is_file() or path.suffix.lower() not in SUPPORTED:
+            abort(404)
+        shown = Path(request.args.get("label", "") or name).name[:120]
+        try:
+            result, err, code = analyze_path(path, shown, "auto")
+        finally:
+            path.unlink(missing_ok=True)  # the copy is only needed for the analysis
+        if err:
+            return check_page(f'<p class="err">{escape(err)}</p>'), code
+        return results_page(result, keep(result))
+
     @app.route("/export/<token>", methods=["GET", "POST"])
     def export(token):  # GET so phone download managers work; the token is an unguessable capability
         entry = store.get(token)
@@ -297,7 +335,7 @@ def create_app(library_root=None, access_code=None) -> Flask:
                  f'{rows}</table></div>' if refs else '<p class="muted">No originals stored yet.</p>')
         body = (f'<h1>Reference library</h1><p class="sub">Known-genuine originals kept for comparing future '
                 f'statements, row by row and line by line.</p>{msg}'
-                f'<form class="card" method="post" action="/library/add" enctype="multipart/form-data">{hidden()}'
+                f'<form class="card" data-busy method="post" action="/library/add" enctype="multipart/form-data">{hidden()}'
                 '<h2>Add an original</h2>'
                 '<label for="rf">Original statement (PDF, image or .txt)</label>'
                 '<input id="rf" name="file" type="file" required '
@@ -359,6 +397,23 @@ def create_app(library_root=None, access_code=None) -> Flask:
                 '<button type="submit">Unlock</button></form></main>')
         return _layout("/login", "Sign in", body).replace("<nav>", '<nav style="display:none">')
 
+    def signed_in(target: str):
+        resp = make_response(redirect(target))
+        resp.set_cookie("sc_auth", session_cookie, httponly=True, samesite="Strict",
+                        secure=request.is_secure, max_age=12 * 3600)
+        return resp
+
+    @app.get("/_bootstrap/<token>")
+    def bootstrap(token):
+        """Sign-in for the Android shell: it alone knows this per-launch secret, so other apps on the
+        phone that can reach 127.0.0.1 cannot get in."""
+        if not bootstrap_token or not hmac.compare_digest(token, bootstrap_token):
+            abort(404)
+        nxt = request.args.get("next", "/")
+        if not nxt.startswith("/") or nxt.startswith("//") or "\\" in nxt:
+            nxt = "/"
+        return signed_in(nxt)
+
     @app.get("/login")
     def login_view():
         return login_page() if access_code else redirect("/")
@@ -373,10 +428,7 @@ def create_app(library_root=None, access_code=None) -> Flask:
             return login_page(f'<p class="err">Too many attempts. Try again in {int(until - now) + 1}s.</p>'), 429
         if hmac.compare_digest(request.form.get("code", "").strip(), access_code):
             fails.pop(ip, None)
-            resp = make_response(redirect("/"))
-            resp.set_cookie("sc_auth", session_cookie, httponly=True, samesite="Strict",
-                            secure=request.is_secure, max_age=12 * 3600)
-            return resp
+            return signed_in("/")
         count += 1
         fails[ip] = (count, now + 60 if count >= 5 else 0)
         if count >= 5:

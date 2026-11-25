@@ -6,3 +6,7 @@ dist/
 build/
 *.spec
 deploy/.env
+android/app/src/main/python/stmtcheck/
+android/.gradle/
+android/**/build/
+android/local.properties

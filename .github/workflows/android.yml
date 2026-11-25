@@ -4,12 +4,14 @@ on:
   push:
     tags: ["v*"]
     branches: ["ccr-f8afe636-i5mzbk"]  # remove once this workflow is on the default branch
-    paths: ["android/**", ".github/workflows/android.yml"]
+    paths: ["android/**", "stmtcheck/**", ".github/workflows/android.yml"]
 jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }   # Chaquopy's build-time pip needs a matching Python
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
@@ -20,3 +22,20 @@ jobs:
         with:
           name: stmtcheck-android-apk
           path: stmtcheck-android.apk
+      - name: Make sample statements for the emulator test
+        run: |
+          pip install -e ".[dev]"
+          python android/ci/make_samples.py samples
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run the app in an emulator and test it end to end
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: bash android/ci/smoke.sh stmtcheck-android.apk samples
