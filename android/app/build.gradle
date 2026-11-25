@@ -42,9 +42,12 @@ dependencies {
     implementation 'com.google.android.gms:play-services-tasks:18.2.0'
 }
 
-// The Python engine is the repository's own `stmtcheck` package: copy it in so there is one source of truth.
-tasks.register('syncPythonSources', Sync) {
+// The Python engine is the repository's own `stmtcheck` package: copy it into a build folder and register that
+// folder as a Python source set, built by the copy task, so there is one source of truth and Gradle orders the
+// tasks correctly.
+def pySyncDir = layout.buildDirectory.dir("generated/stmtcheck-py").get().asFile
+def syncPython = tasks.register('syncPythonSources', Sync) {
     from("${rootDir}/../stmtcheck") { exclude '__pycache__', '**/*.pyc' }
-    into("${projectDir}/src/main/python/stmtcheck")
+    into(new File(pySyncDir, "stmtcheck"))
 }
-tasks.named('preBuild') { dependsOn 'syncPythonSources' }
+android.sourceSets.main.python.srcDir(files(pySyncDir).builtBy(syncPython))
