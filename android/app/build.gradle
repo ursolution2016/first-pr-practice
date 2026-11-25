@@ -37,6 +37,8 @@ chaquopy {
 }
 
 dependencies {
+    // ML Kit drags in kotlin-stdlib-jdk7/jdk8 1.6.x while AndroidX uses 1.8.x: align them to avoid duplicate classes.
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
     implementation 'androidx.core:core:1.13.1'                          // FileProvider (camera captures)
     implementation 'com.google.mlkit:text-recognition:16.0.1'            // on-device OCR, bundled model
     implementation 'com.google.android.gms:play-services-tasks:18.2.0'
