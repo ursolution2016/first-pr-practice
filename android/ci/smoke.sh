@@ -14,7 +14,7 @@ dump_app_log() {
   adb logcat -d -v time | grep -E "StmtCheck|AndroidRuntime|FATAL EXCEPTION|[Cc]haquopy|[Pp]ython|app\.stmtcheck|System\.err|ANR in|UnsatisfiedLink|ClassNotFound|NoClassDefFound" | tail -150 || true
 }
 for i in $(seq 1 40); do
-  LINE=$(adb logcat -d -s StmtCheck:I StmtCheck:E | grep -E "STMTCHECK_READY|startup failed" | tail -1 || true)
+  LINE=$(adb logcat -d -s StmtCheck:I | grep -E "STMTCHECK_READY|startup failed" | tail -1 || true)
   [ -n "$LINE" ] && break
   sleep 3
 done
