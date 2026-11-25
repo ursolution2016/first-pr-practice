@@ -114,27 +114,31 @@ server refuses to listen beyond this computer without a code.
 There is **no native iOS/Android app**: those need Xcode / the Android SDK, and the analysis engine
 (Python, Tesseract) runs on the computer, not the phone.
 
-### Android app + cloud server
-The Android app is a native shell: you give it your server's **HTTPS** address once; the analysis runs on
-your server (Python + Tesseract can't run on the phone). It supports file and camera upload and saves the
-PDF/CSV exports to Downloads. Only `https://` is accepted, TLS errors are never bypassed, and navigation is
-pinned to your server.
+### Android app (self-contained)
+The Android app runs everything **on the phone**: the Python engine (via Chaquopy), OCR (Google ML Kit, bundled
+model, works offline) and PDF rendering (Android PdfRenderer). There is no server to set up and statements are
+never uploaded. Tap the icon and it opens.
 
-**1. Run the server** (any machine with Docker and a domain name pointing at it):
-```
-cp deploy/.env.example deploy/.env       # set DOMAIN and a long STMTCHECK_ACCESS_CODE (12+ chars)
-docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
-```
-Caddy obtains a TLS certificate automatically (ports 80 and 443 must be reachable). The app refuses to
-start without an access code. The reference library lives in the `data` volume; back it up.
-Uploaded statements are written to a tmpfs and deleted straight after analysis. This is a **single-user**
-deployment: one shared access code and one shared library.
+- **Install:** run the "Build Android app" workflow (Actions tab; it also runs on pushes to this branch), download
+  the `stmtcheck-android-apk` artifact, copy `stmtcheck-android.apk` to the phone, allow "install unknown apps"
+  for your file manager or browser, and open it. The APK is debug-signed (installable, not for the Play Store);
+  Play Protect may warn. It is ~70 MB (arm64 and x86_64 builds of Python, numpy and Pillow).
+- **Use:** pick a PDF or photo (the camera is offered), or share / "Open with" a PDF or image from Files, Drive or
+  email straight into the app. The reference library lives in the app's private storage. Exports are saved to
+  Downloads. Scanned pages take longer than text PDFs (about 10-20 s per page on an emulator).
+- **How it stays private:** the engine listens on 127.0.0.1 on a random port, which other apps on a phone could
+  reach, so it requires a session and hands it only to the app's own WebView through a per-launch secret URL.
+  Only HTTPS is allowed except for that loopback address. The app backs nothing up (`allowBackup=false`), so
+  uninstalling removes the library.
+- **CI proves it on Android:** the workflow installs the APK in an emulator and, through the app's own server,
+  uploads a tampered text PDF, a clean PDF (no false alarm), a scanned photo, and a flattened scanned PDF, then
+  stores an original, compares against it and downloads the PDF report. The emulator is x86_64 Android 11; it is
+  not a physical phone.
 
-**2. Install the app:** run the "Build Android app" workflow (Actions tab; it also runs on pushes to this
-branch) and download the `stmtcheck-android-apk` artifact. Copy `stmtcheck-android.apk` to the phone,
-allow "install unknown apps" for your file manager or browser, open it, then enter your server address and
-the access code. The APK is debug-signed (installable, not for the Play Store); Play Protect may warn.
-Menu: Reload, Change server, Sign out and clear data.
+### Cloud server (optional, for browsers)
+The Docker setup in `deploy/` (Caddy gives automatic HTTPS) is for using the web app from any browser. The
+Android app does not need it. See `deploy/docker-compose.yml`; `STMTCHECK_ACCESS_CODE` (12+ characters) is
+required, and the app refuses to start without it. Untested here with a real Docker host.
 
 ### Limits (read these)
 - Findings are indicators, not proof. A clean result does not show a document is genuine. Someone who
@@ -148,9 +152,9 @@ Menu: Reload, Change server, Sign out and clear data.
 - Copy-move (clone) detection is not implemented.
 - Comparison with an original is only as good as the original: a forged "original" in the library will
   vouch for a forgery. Obtain originals directly from the issuer.
-- The Android app and the Docker setup have **not** been run on a real phone or a real Docker host by the
-  author: the APK compiles in CI, and the server was tested without Docker (clean install + the production
-  command). Expect small fixes on first use.
+- The Android app has been tested in an emulator in CI, not on a physical phone. The camera capture, the file
+  picker and "Open with" / Share hand-off are not covered by that test (only their server side is). The Docker
+  setup has not been run on a real Docker host.
 - Analysis results behind the export buttons are held in memory for 20 minutes, then dropped.
 - All tests use synthetic, fictional statements. Real bank layouts will need adjustment, and detection
   rates on real forgeries have not been measured.
