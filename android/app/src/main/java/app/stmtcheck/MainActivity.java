@@ -73,6 +73,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i(TAG, "onCreate");
         FrameLayout root = new FrameLayout(this);
         web = new WebView(this);
         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -94,7 +95,9 @@ public class MainActivity extends Activity {
 
         new Thread(() -> {
             try {
+                Log.i(TAG, "starting Python");
                 if (!Python.isStarted()) Python.start(new AndroidPlatform(this));
+                Log.i(TAG, "Python started; starting server");
                 PyObject res = Python.getInstance().getModule("stmtcheck_android.server")
                         .callAttr("start", getFilesDir().getAbsolutePath(), getCacheDir().getAbsolutePath());
                 int port = res.asList().get(0).toInt();

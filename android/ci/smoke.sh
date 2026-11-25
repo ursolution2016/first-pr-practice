@@ -9,13 +9,17 @@ adb install -r "$APK"
 adb logcat -c
 adb shell am start -n "$PKG/app.stmtcheck.MainActivity"
 
-for i in $(seq 1 60); do
+dump_app_log() {
+  echo "=== app process: $(adb shell pidof "$PKG" || echo 'NOT RUNNING')"
+  adb logcat -d -v time | grep -E "StmtCheck|AndroidRuntime|FATAL EXCEPTION|[Cc]haquopy|[Pp]ython|app\.stmtcheck|System\.err|ANR in|UnsatisfiedLink|ClassNotFound|NoClassDefFound" | tail -150 || true
+}
+for i in $(seq 1 40); do
   LINE=$(adb logcat -d -s StmtCheck:I StmtCheck:E | grep -E "STMTCHECK_READY|startup failed" | tail -1 || true)
   [ -n "$LINE" ] && break
   sleep 3
 done
 echo "app said: ${LINE:-nothing}" | sed 's/token=.*/token=<hidden>/'
-case "$LINE" in *STMTCHECK_READY*) ;; *) echo "App did not start"; adb logcat -d | tail -80; exit 1;; esac
+case "$LINE" in *STMTCHECK_READY*) ;; *) echo "App did not start"; dump_app_log; exit 1;; esac
 PORT=$(echo "$LINE" | sed -E 's/.*port=([0-9]+).*/\1/')
 TOKEN=$(echo "$LINE" | sed -E 's/.*token=([0-9a-f]+).*/\1/')
 adb forward "tcp:$PORT" "tcp:$PORT"
@@ -32,6 +36,7 @@ HOME_HTML=$(curl -s -b "$JAR" "$BASE/")
 CSRF=$(echo "$HOME_HTML" | grep -o 'name="csrf" value="[0-9a-f]*"' | head -1 | sed -E 's/.*value="([0-9a-f]+)".*/\1/')
 test -n "$CSRF"
 
+trap 'echo "--- script failed; app log:"; dump_app_log' ERR
 check() {  # file expected-text label
   OUT=$(curl -s -b "$JAR" -F "csrf=$CSRF" -F "against=none" -F "file=@$1" "$BASE/analyze")
   if echo "$OUT" | grep -q "$2"; then echo "PASS: $3"; else echo "FAIL: $3"; echo "$OUT" | sed 's/<[^>]*>/ /g' | tr -s ' \n' | head -c 1500; exit 1; fi
