@@ -1,0 +1,29 @@
+name: Build executables
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+    branches: ["ccr-f8afe636-i5mzbk"]  # remove once this workflow is on the default branch
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev]" pyinstaller
+      - run: pytest -q
+      - run: python build_exe.py
+      - name: Smoke test the executable
+        shell: bash
+        run: |
+          python -c "import sys; sys.path.insert(0,'tests'); from test_stmtcheck import build_pdf; build_pdf('smoke.pdf')"
+          ./dist/stmtcheck smoke.pdf || test $? -le 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stmtcheck-${{ matrix.os }}
+          path: dist/stmtcheck*

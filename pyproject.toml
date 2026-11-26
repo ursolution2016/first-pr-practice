@@ -1,0 +1,18 @@
+[project]
+name = "stmtcheck"
+version = "0.3.0"
+description = "Screen bank statements for signs of tampering"
+requires-python = ">=3.10"
+dependencies = ["pypdf>=5", "pdfminer.six>=20231228", "pypdfium2>=4; platform_system != 'Android'", "pillow>=10", "numpy>=1.26", "reportlab>=4"]
+
+[project.optional-dependencies]
+ocr = ["pytesseract>=0.3"]   # also needs the Tesseract binary (apt install tesseract-ocr)
+web = ["flask>=3"]
+server = ["flask>=3", "waitress>=3", "pytesseract>=0.3"]
+dev = ["pytest", "pytesseract>=0.3", "flask>=3"]
+
+[project.scripts]
+stmtcheck = "stmtcheck.cli:main"
+
+[tool.setuptools]
+packages = ["stmtcheck"]

@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+    id 'com.chaquo.python'
+}
+
+android {
+    namespace 'app.stmtcheck'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'app.stmtcheck.mobile'
+        minSdk 26
+        targetSdk 34
+        versionCode 2
+        versionName '2.0'
+        ndk { abiFilters "arm64-v8a", "x86_64" }   // phones + the CI emulator
+    }
+    buildTypes { release { minifyEnabled false } }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    packagingOptions { jniLibs { useLegacyPackaging = true } }
+}
+
+chaquopy {
+    defaultConfig {
+        version "3.11"
+        pip {
+            install "flask==3.0.3"
+            install "pypdf==5.0.1"
+            install "pdfminer.six==20240706"
+            install "reportlab==4.2.5"
+            install "numpy"        // newest build Chaquopy provides for this Python
+            install "pillow"
+        }
+    }
+}
+
+dependencies {
+    // ML Kit drags in kotlin-stdlib-jdk7/jdk8 1.6.x while AndroidX uses 1.8.x: align them to avoid duplicate classes.
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
+    implementation 'androidx.core:core:1.13.1'                          // FileProvider (camera captures)
+    implementation 'com.google.mlkit:text-recognition:16.0.1'            // on-device OCR, bundled model
+    implementation 'com.google.android.gms:play-services-tasks:18.2.0'
+}
+
+// The Python engine is the repository's own `stmtcheck` package: copy it into a build folder and register that
+// folder as a Python source set, built by the copy task, so there is one source of truth and Gradle orders the
+// tasks correctly.
+def pySyncDir = layout.buildDirectory.dir("generated/stmtcheck-py").get().asFile
+def syncPython = tasks.register('syncPythonSources', Sync) {
+    from("${rootDir}/../stmtcheck") { exclude '__pycache__', '**/*.pyc' }
+    into(new File(pySyncDir, "stmtcheck"))
+}
+android.sourceSets.main.python.srcDir(files(pySyncDir).builtBy(syncPython))
