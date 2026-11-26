@@ -5,6 +5,8 @@ on:
     tags: ["v*"]
     branches: ["ccr-f8afe636-i5mzbk"]  # remove once this workflow is on the default branch
     paths: ["android/**", "stmtcheck/**", ".github/workflows/android.yml"]
+permissions:
+  contents: write   # lets a version tag publish the release
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -39,3 +41,13 @@ jobs:
           target: google_apis
           disable-animations: true
           script: bash android/ci/smoke.sh stmtcheck-android.apk samples
+      - name: Publish the tested APK as a GitHub release (version tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          sha256sum stmtcheck-android.apk | tee stmtcheck-android.apk.sha256
+          gh release create "$TAG" stmtcheck-android.apk stmtcheck-android.apk.sha256 \
+            --title "Statement Check $TAG (Android)" \
+            --notes "Self-contained Android app: the engine and OCR run on the phone and statements are never uploaded. Download stmtcheck-android.apk, allow installing from your browser or Files app, and open it. Debug-signed (sideload only). This exact file passed the on-device emulator tests in CI; it has not been tested on a physical phone. Verify with the .sha256 file."
